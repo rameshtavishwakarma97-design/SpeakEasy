@@ -1,4 +1,5 @@
 export type ContentStyle =
+  | 'summary'
   | 'podcast'
   | 'narration'
   | 'storytelling'
@@ -13,6 +14,12 @@ export interface StyleOption {
 }
 
 export const STYLE_OPTIONS: StyleOption[] = [
+  {
+    value: 'summary',
+    label: 'Summary',
+    emoji: '📋',
+    description: 'Clear, concise summary for easy listening',
+  },
   {
     value: 'podcast',
     label: 'Podcast',
@@ -46,6 +53,20 @@ export const STYLE_OPTIONS: StyleOption[] = [
 ];
 
 const STYLE_PROMPTS: Record<ContentStyle, string> = {
+  summary: `You are an accessibility-focused content summarizer. Create a clear, concise spoken summary of the provided source material designed for visually impaired listeners.
+
+The script must follow this structure:
+OVERVIEW: State the topic and what the document is about in 1-2 sentences.
+KEY POINTS: List and explain the most important points in plain, simple language. Use short sentences. Number each point.
+TAKEAWAY: End with a brief closing that highlights the single most important thing to remember.
+
+Rules:
+- Use simple, everyday language — avoid jargon unless you explain it.
+- Keep sentences short and easy to follow when heard aloud.
+- Be direct and factual. Do not add filler or dramatic language.
+- The total summary should be concise — aim for 150-300 words.
+- The content MUST be grounded in the provided source material.`,
+
   podcast: `You are a professional podcast script writer. Create an engaging podcast episode script based on the provided source material.
 
 The script must follow this structure:
@@ -95,6 +116,8 @@ Use an authoritative but approachable teaching tone. The content MUST be grounde
 
 /** Style-specific retrieval queries to find the most relevant chunks */
 export const STYLE_QUERIES: Record<ContentStyle, string> = {
+  summary:
+    'main points, key information, important facts, core message, essential takeaways',
   podcast:
     'key topics, interesting discussions, main points for conversation',
   narration:

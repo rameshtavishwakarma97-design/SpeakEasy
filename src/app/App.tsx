@@ -26,7 +26,7 @@ function App() {
   const [success, setSuccess] = useState<string | null>(null);
 
   // RAG pipeline state
-  const [contentStyle, setContentStyle] = useState<ContentStyle>('podcast');
+  const [contentStyle, setContentStyle] = useState<ContentStyle>('summary');
   const [apiToken, setApiToken] = useState(() => {
     return localStorage.getItem('hf_api_token') || (import.meta as any).env?.VITE_HF_TOKEN || '';
   });
