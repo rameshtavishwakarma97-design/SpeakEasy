@@ -13,6 +13,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Accept HF token as build argument (set as HF Space secret)
+ARG VITE_HF_TOKEN
+ENV VITE_HF_TOKEN=$VITE_HF_TOKEN
+
 # Build the project
 RUN npm run build
 

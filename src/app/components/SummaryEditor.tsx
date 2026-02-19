@@ -8,6 +8,7 @@ interface SummaryEditorProps {
   onSummaryChange: (summary: string) => void;
   originalLength: number;
   summaryLength: number;
+  title?: string;
 }
 
 export function SummaryEditor({
@@ -15,6 +16,7 @@ export function SummaryEditor({
   onSummaryChange,
   originalLength,
   summaryLength,
+  title = 'Summary',
 }: SummaryEditorProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -39,7 +41,7 @@ export function SummaryEditor({
         className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors border-b dark:border-slate-700"
       >
         <div className="flex items-center gap-2">
-          <span className="text-lg dark:text-gray-200">📝 Summary</span>
+          <span className="text-lg dark:text-gray-200">📝 {title}</span>
           <span className="text-sm text-gray-500 dark:text-gray-400">
             ({summaryLength} words · {reductionPercent}% reduction)
           </span>

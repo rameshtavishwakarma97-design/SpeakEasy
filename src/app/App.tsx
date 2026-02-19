@@ -4,13 +4,19 @@ import { FileUpload } from './components/FileUpload';
 import { SummaryEditor } from './components/SummaryEditor';
 import { VoiceControls } from './components/VoiceControls';
 import { AudioPlayer } from './components/AudioPlayer';
+import { StyleSelector } from './components/StyleSelector';
 import { Button } from './components/ui/button';
 import { Separator } from './components/ui/separator';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
 import { Alert, AlertDescription } from './components/ui/alert';
-import { Volume2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { summarizeText, getWordCount } from './utils/summarizer';
+import { Volume2, AlertCircle, CheckCircle2, Settings, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { getWordCount } from './utils/summarizer';
 import { TTSEngine, TTSSettings, isWebSpeechSupported } from './utils/ttsEngine';
 import { ThemeToggle } from './components/ThemeToggle';
+import { chunkText } from './utils/chunker';
+import { VectorStore } from './utils/embeddings';
+import { generateScript, ContentStyle, STYLE_QUERIES } from './utils/scriptGenerator';
 
 function App() {
   const [inputText, setInputText] = useState('');
@@ -18,6 +24,20 @@ function App() {
   const [hasSummary, setHasSummary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // RAG pipeline state
+  const [contentStyle, setContentStyle] = useState<ContentStyle>('podcast');
+  const [apiToken, setApiToken] = useState(() => {
+    return localStorage.getItem('hf_api_token') || (import.meta as any).env?.VITE_HF_TOKEN || '';
+  });
+  const [showSettings, setShowSettings] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState('');
+
+  const handleApiTokenChange = (token: string) => {
+    setApiToken(token);
+    localStorage.setItem('hf_api_token', token);
+  };
 
   // TTS Engine and settings
   const ttsEngine = useMemo(() => new TTSEngine(), []);
@@ -59,26 +79,55 @@ function App() {
     setTimeout(() => setSuccess(null), 3000);
   };
 
-  const handleSummarizeAndConvert = () => {
+  const handleGenerate = async () => {
     setError(null);
     setSuccess(null);
 
-    // Validation
     if (!inputText.trim()) {
       setError('Please enter text or upload a file.');
       return;
     }
 
+    if (!apiToken.trim()) {
+      setError('Please provide a HuggingFace API token in the Settings panel above.');
+      setShowSettings(true);
+      return;
+    }
+
+    setIsGenerating(true);
+
     try {
-      // Summarize the text
-      const summarized = summarizeText(inputText, 5);
-      setSummary(summarized);
+      // Step 1: Chunk the document
+      setGenerationStep('Chunking document...');
+      const chunks = chunkText(inputText, 500, 50);
+
+      // Step 2: Generate embeddings and build vector store
+      setGenerationStep('Generating embeddings...');
+      const vectorStore = new VectorStore();
+      await vectorStore.index(chunks, apiToken);
+
+      // Step 3: Retrieve the most relevant chunks for the selected style
+      setGenerationStep('Retrieving relevant passages...');
+      const relevantChunks = await vectorStore.retrieve(
+        STYLE_QUERIES[contentStyle],
+        apiToken,
+        5
+      );
+
+      // Step 4: Generate structured script using LLM
+      setGenerationStep('Generating script with AI...');
+      const script = await generateScript(relevantChunks, contentStyle, apiToken);
+
+      setSummary(script);
       setHasSummary(true);
-      setSuccess('Summary generated! You can edit it before playing.');
-    } catch (err) {
-      setError('Failed to generate summary. Using original text instead.');
-      setSummary(inputText);
-      setHasSummary(true);
+      setSuccess(
+        `${contentStyle.charAt(0).toUpperCase() + contentStyle.slice(1)} script generated! You can edit it before playing.`
+      );
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate script. Please try again.');
+    } finally {
+      setIsGenerating(false);
+      setGenerationStep('');
     }
   };
 
@@ -143,26 +192,92 @@ function App() {
             </Alert>
           )}
 
+          {/* API Settings */}
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md transition-colors duration-300 overflow-hidden">
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                <span className="font-medium dark:text-gray-200">API Settings</span>
+                {apiToken && (
+                  <span className="text-xs text-green-500 ml-2">● Connected</span>
+                )}
+              </div>
+              {showSettings ? (
+                <ChevronUp className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              ) : (
+                <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              )}
+            </button>
+            {showSettings && (
+              <div className="px-6 pb-4 space-y-3 border-t dark:border-slate-800">
+                <div className="space-y-2 pt-3">
+                  <Label htmlFor="api-token" className="dark:text-gray-200">
+                    HuggingFace API Token
+                  </Label>
+                  <Input
+                    id="api-token"
+                    type="password"
+                    value={apiToken}
+                    onChange={(e) => handleApiTokenChange(e.target.value)}
+                    placeholder="hf_..."
+                    className="dark:bg-slate-800 dark:text-gray-100 dark:border-slate-700"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Get a free token at{' '}
+                    <a
+                      href="https://huggingface.co/settings/tokens"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:underline"
+                    >
+                      huggingface.co/settings/tokens
+                    </a>
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Input Section */}
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6 space-y-6 transition-colors duration-300">
-            <TextInput value={inputText} onChange={setInputText} disabled={hasSummary} />
+            <TextInput value={inputText} onChange={setInputText} disabled={hasSummary || isGenerating} />
 
             <div className="flex items-center gap-4">
               <Separator className="flex-1" />
-              <span className="text-sm text-gray-500">OR</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">OR</span>
               <Separator className="flex-1" />
             </div>
 
-            <FileUpload onFileLoaded={handleFileLoaded} disabled={hasSummary} />
+            <FileUpload onFileLoaded={handleFileLoaded} disabled={hasSummary || isGenerating} />
+
+            <Separator className="dark:bg-slate-700" />
+
+            <StyleSelector
+              value={contentStyle}
+              onChange={setContentStyle}
+              disabled={hasSummary || isGenerating}
+            />
 
             <Button
-              onClick={handleSummarizeAndConvert}
+              onClick={handleGenerate}
               size="lg"
               className="w-full"
-              disabled={!inputText.trim() || hasSummary}
+              disabled={!inputText.trim() || hasSummary || isGenerating || !apiToken.trim()}
             >
-              <Volume2 className="mr-2 h-5 w-5" />
-              Summarize & Convert to Speech
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  {generationStep}
+                </>
+              ) : (
+                <>
+                  <Volume2 className="mr-2 h-5 w-5" />
+                  Generate Script & Convert to Speech
+                </>
+              )}
             </Button>
           </div>
 
@@ -174,6 +289,7 @@ function App() {
                 onSummaryChange={handleSummaryChange}
                 originalLength={originalWordCount}
                 summaryLength={summaryWordCount}
+                title="Generated Script"
               />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -206,8 +322,8 @@ function App() {
 
         {/* Footer */}
         <footer className="text-center mt-12 pb-8 text-sm text-gray-500">
-          <p>Built with React & Web Speech API • 100% Free & Open Source</p>
-          <p className="mt-1">No API keys required • All processing happens in your browser</p>
+          <p>Built with React, HuggingFace AI & Web Speech API • Free & Open Source</p>
+          <p className="mt-1">RAG-powered script generation • Multiple content styles</p>
         </footer>
       </div>
     </div>

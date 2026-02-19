@@ -17,6 +17,17 @@ export default defineConfig({
     },
   },
 
+  // Proxy HuggingFace API calls to avoid CORS issues during development
+  server: {
+    proxy: {
+      '/api/hf': {
+        target: 'https://router.huggingface.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/hf/, ''),
+      },
+    },
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })
