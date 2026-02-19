@@ -53,19 +53,16 @@ export const STYLE_OPTIONS: StyleOption[] = [
 ];
 
 const STYLE_PROMPTS: Record<ContentStyle, string> = {
-  summary: `You are an accessibility-focused content summarizer. Create a clear, concise spoken summary of the provided source material designed for visually impaired listeners.
-
-The script must follow this structure:
-OVERVIEW: State the topic and what the document is about in 1-2 sentences.
-KEY POINTS: List and explain the most important points in plain, simple language. Use short sentences. Number each point.
-TAKEAWAY: End with a brief closing that highlights the single most important thing to remember.
+  summary: `Summarize the provided source material into a short, plain-text abstract.
 
 Rules:
-- Use simple, everyday language — avoid jargon unless you explain it.
-- Keep sentences short and easy to follow when heard aloud.
-- Be direct and factual. Do not add filler or dramatic language.
-- The total summary should be concise — aim for 150-300 words.
-- The content MUST be grounded in the provided source material.`,
+- Output ONLY the summary text. No titles, headings, labels, stage directions, or formatting.
+- Do NOT include anything like [PAUSE], [MUSIC], "Announcer:", "Host:", or any script-style markup.
+- Write in plain flowing paragraphs. No bullet points, no numbered lists.
+- Keep it between 50-100 words — shorter is better.
+- Use simple, clear language a listener can easily follow.
+- Be factual. Only include information from the source material.
+- Do NOT add opinions, filler phrases, or dramatic language.`,
 
   podcast: `You are a professional podcast script writer. Create an engaging podcast episode script based on the provided source material.
 
@@ -248,11 +245,17 @@ function cleanScript(text: string): string {
     // Remove common LLM intro artifacts
     .replace(/^(Here'?s?|Sure|Okay|Certainly|Of course)[^.:\n]*[.:]\s*/i, '')
     .replace(/\*\*/g, '') // Remove markdown bold
-    .replace(/#{1,3}\s*/g, '') // Remove markdown headers
-    .trim();
+    .replace(/#{1,3}\s*/g, '') // Remove markdown headers    // Remove stage directions like [PAUSE FOR A MOMENT], [OUTRO MUSIC FADES IN], etc.
+    .replace(/\[([^\]]{0,80})\]\s*/g, '')
+    // Remove speaker labels like Announcer:, Host:, Narrator:
+    .replace(/^(Announcer|Host|Narrator|Speaker\s*\d*)\s*:\s*/gim, '')
+    // Remove labels like OVERVIEW:, KEY POINTS:, TAKEAWAY:
+    .replace(/^(OVERVIEW|KEY POINTS?|TAKEAWAY|INTRODUCTION|BODY|CONCLUSION|OPENING|CLOSING|NARRATIVE|SIDE [AB])\s*[:—-]?\s*/gim, '')
+    // Collapse multiple blank lines
+    .replace(/\n{3,}/g, '\n\n')    .trim();
 
   // If the script is too short, it probably failed
-  if (cleaned.length < 100) {
+  if (cleaned.length < 50) {
     throw new Error(
       'Generated script is too short. The model may not have produced valid output. Please try again.'
     );
