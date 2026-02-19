@@ -1,0 +1,192 @@
+Here is the fully updated PRD with **100% free and open-source** tools only — no API keys, no paid services:
+
+***
+
+# Product Requirements Document (PRD)
+## SpeakEasy – Text-to-Speech Web App (Free & Open Source)
+
+| Field | Detail |
+|---|---|
+| **Product Name** | SpeakEasy – TTS Converter |
+| **Version** | v1.0 (Open Source Edition) |
+| **Author** | [Your Name] |
+| **Date** | February 19, 2026 |
+| **Constraint** | 100% Free & Open Source — No API Keys |
+
+***
+
+## 1. Overview
+
+SpeakEasy is a fully free, open-source Text-to-Speech web app built on Streamlit. Users can type text or upload `.txt`, `.pdf`, or `.docx` files, which are summarized and then converted to speech using offline/open-source libraries. No API keys, no subscriptions, no cost. [pyttsx3](https://pyttsx3.com)
+
+***
+
+## 2. Open Source Technology Decisions
+
+Every component has been selected to be **free, open-source, and installable via pip** with no external account or key required.
+
+| Component | Chosen Tool | Reason |
+|---|---|---|
+| **Web Framework** | `streamlit` | Free, open-source, easy to deploy  [codersarts](https://www.codersarts.com/post/creating-a-text-to-speech-web-application-with-streamlit-and-speecht5) |
+| **TTS Engine (Primary)** | `gTTS` | Free, uses Google's engine over internet, no API key needed  [smallest](https://smallest.ai/blog/python-packages-realistic-text-to-speech) |
+| **TTS Engine (Offline fallback)** | `pyttsx3` | 100% offline, no internet needed, uses system voices  [pyttsx3](https://pyttsx3.com) |
+| **PDF Parsing** | `pdfplumber` | Free, open-source |
+| **DOCX Parsing** | `python-docx` | Free, open-source |
+| **Summarization** | `sumy` + `nltk` | Fully offline extractive summarization, no model downloads needed  [edenai](https://www.edenai.co/post/top-free-summarization-tools-apis-and-open-source-models) |
+| **Hosting** | Streamlit Community Cloud | Free tier for students  [codersarts](https://www.codersarts.com/post/creating-a-text-to-speech-web-application-with-streamlit-and-speecht5) |
+
+> **Why gTTS over pyttsx3 as primary?** gTTS produces far more natural-sounding audio. pyttsx3 sounds robotic but works completely offline as a fallback. [smallest](https://smallest.ai/blog/python-packages-realistic-text-to-speech)
+
+***
+
+## 3. Functional Requirements
+
+### F1 — Text Input Card
+- `st.text_area()` for manual text entry
+- Character limit: 5,000 characters with a live counter
+- Placeholder: *"Type or paste your text here..."*
+
+### F2 — File Upload
+- `st.file_uploader()` supporting `.txt`, `.pdf`, `.docx`
+- Max file size: **5 MB**
+- Extracted text auto-fills the text area for user review
+- Parsing stack (all free):
+
+| Format | Library | Install |
+|---|---|---|
+| `.pdf` | `pdfplumber` | `pip install pdfplumber` |
+| `.docx` | `python-docx` | `pip install python-docx` |
+| `.txt` | Python built-in `read()` | No install needed |
+
+### F3 — Summarization (100% Offline & Free)
+- Uses **`sumy`** with the **LexRank algorithm** — fully offline, no model downloads [edenai](https://www.edenai.co/post/top-free-summarization-tools-apis-and-open-source-models)
+- Fallback: **`nltk`** frequency-based summarization [github](https://github.com/colombomf/text-summarizer)
+- Summary target: top 5 sentences or ~20% of original text
+- Summary displayed inside `st.expander("📝 View Summary Before Playback")`
+- User can **edit the summary** before converting to speech
+
+### F4 — TTS Conversion (Free)
+
+**Primary: `gTTS`** (requires internet, no key) [smallest](https://smallest.ai/blog/python-packages-realistic-text-to-speech)
+```python
+from gtts import gTTS
+import io
+tts = gTTS(text=summary, lang='en')
+audio_fp = io.BytesIO()
+tts.write_to_fp(audio_fp)
+```
+
+**Fallback: `pyttsx3`** (100% offline) [pyttsx3](https://pyttsx3.com)
+```python
+import pyttsx3, tempfile
+engine = pyttsx3.init()
+engine.save_to_file(summary, 'output.wav')
+engine.runAndWait()
+```
+
+- App auto-detects internet availability and switches engines accordingly
+- Output format: `.mp3` (gTTS) or `.wav` (pyttsx3)
+
+### F5 — Audio Playback & Replay
+- `st.audio(audio_bytes, format='audio/mp3')` renders the in-browser player
+- **"🔁 Play Again"** button re-renders the audio widget using `st.session_state`
+- Audio bytes stored in `st.session_state['audio']` so it persists across reruns [discuss.streamlit](https://discuss.streamlit.io/t/text-voice-app/63713)
+
+### F6 — Download Audio
+- `st.download_button("⬇ Download Audio", data=audio_bytes, file_name="speakeasy.mp3")`
+- Completely free, no storage service needed
+
+***
+
+## 4. Free Hosting — Streamlit Community Cloud
+
+- Push code to a **public GitHub repository**
+- Connect repo to [streamlit.io/cloud](https://streamlit.io/cloud)
+- Free tier supports unlimited public apps for students
+- Add `requirements.txt` with all dependencies — Streamlit Cloud installs them automatically [codersarts](https://www.codersarts.com/post/creating-a-text-to-speech-web-application-with-streamlit-and-speecht5)
+
+**`requirements.txt`:**
+```
+streamlit>=1.32.0
+gTTS>=2.3.2
+pdfplumber>=0.10.0
+python-docx>=1.1.0
+sumy>=0.11.0
+nltk>=3.8.1
+pyttsx3>=2.90
+```
+
+> ⚠️ **Note on pyttsx3 on Streamlit Cloud:** pyttsx3 requires system-level TTS engines (eSpeak on Linux). Add a `packages.txt` file in your repo root with `espeak-ng` to install it on the cloud server. [github](https://github.com/nateshmbhat/pyttsx3)
+
+**`packages.txt`:**
+```
+espeak-ng
+libespeak1
+```
+
+***
+
+## 5. UI Wireframe
+
+```
+┌──────────────────────────────────────────────┐
+│   🔊 SpeakEasy — Free Text to Speech         │
+├──────────────────────────────────────────────┤
+│  📝 Enter Text                               │
+│  ┌────────────────────────────────────────┐  │
+│  │  Type or paste your content here...   │  │
+│  └────────────────────────────────────────┘  │
+│  Characters: 0 / 5000                        │
+│                                              │
+│  ── OR ──                                    │
+│                                              │
+│  📎 Upload File (.txt, .pdf, .docx)          │
+│  [ Browse Files ]                            │
+│                                              │
+│  [ 🔊 Summarize & Convert to Speech ]        │
+├──────────────────────────────────────────────┤
+│  ▼ 📝 View Summary (editable)               │
+│                                              │
+│  🎧 Audio Player                            │
+│  [▶ Play ──────────── 0:00 / 0:30 🔊]       │
+│                                              │
+│  [ 🔁 Play Again ]   [ ⬇ Download MP3 ]     │
+└──────────────────────────────────────────────┘
+```
+
+***
+
+## 6. Error Handling
+
+| Scenario | Handling |
+|---|---|
+| No text entered + no file | Show `st.warning("Please enter text or upload a file.")` |
+| Unsupported file type | Show `st.error("Only .txt, .pdf, .docx are supported.")` |
+| File > 5 MB | Show `st.error("File too large. Max size is 5 MB.")` |
+| gTTS fails (no internet) | Auto-switch to `pyttsx3` offline engine |
+| Summarization failure | Skip summarization, use original text with `st.info()` notice |
+| Empty parsed file | Show `st.warning("Uploaded file appears to be empty.")` |
+
+***
+
+## 7. Development Milestones
+
+| # | Milestone | Tasks | Est. Time |
+|---|---|---|---|
+| M1 | Project Setup | Streamlit skeleton, GitHub repo, `requirements.txt` | Day 1 |
+| M2 | Text Input + gTTS | Text area → gTTS → `st.audio()` playback | Day 2 |
+| M3 | File Upload | PDF, DOCX, TXT parsing → populate text area | Day 3–4 |
+| M4 | Summarization | Integrate `sumy` LexRank, show in expander | Day 5 |
+| M5 | Replay + Download | `st.session_state` audio, download button | Day 6 |
+| M6 | Error Handling + UI Polish | All edge cases, layout cleanup | Day 7–8 |
+| M7 | Deploy | Push to GitHub, connect Streamlit Community Cloud | Day 9 |
+
+***
+
+## 8. Future Enhancements (Still Free)
+
+- **Multiple languages** — gTTS supports 30+ languages via `lang` parameter, completely free [smallest](https://smallest.ai/blog/python-packages-realistic-text-to-speech)
+- **Voice speed control** — `st.slider()` for slow/normal/fast using gTTS's `slow=True` flag
+- **Coqui TTS** — Higher quality open-source deep learning TTS, fully offline and free [picovoice](https://picovoice.ai/blog/on-device-text-to-speech-in-python/)
+- **BART summarization** — HuggingFace `facebook/bart-large-cnn` model, free to run locally
+- **URL input** — Paste an article URL, extract text with `newspaper3k` (free)
