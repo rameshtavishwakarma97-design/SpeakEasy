@@ -25,7 +25,8 @@ function App() {
 
   // RAG pipeline state
   const [contentStyle, setContentStyle] = useState<ContentStyle>('summary');
-  const apiToken = import.meta.env.VITE_HF_TOKEN || '';
+  // Token: check build-time env (Vite), then runtime injection (server.js), then empty
+  const apiToken = import.meta.env.VITE_HF_TOKEN || (window as any).__ENV__?.VITE_HF_TOKEN || '';
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
 

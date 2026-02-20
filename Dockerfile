@@ -13,19 +13,11 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Accept HF token as build argument (set as HF Space secret)
-ARG VITE_HF_TOKEN
-# Write .env file so Vite can pick up the token at build time
-RUN echo "VITE_HF_TOKEN=${VITE_HF_TOKEN}" > .env
-
-# Build the project
+# Build the project (token will be injected at runtime, not build time)
 RUN npm run build
-
-# Install a simple static file server
-RUN npm install -g serve
 
 # Expose port 7860 (Required by Hugging Face Spaces)
 EXPOSE 7860
 
-# Start the server on port 7860, serving the 'dist' directory as a Single Page App
-CMD ["serve", "-s", "dist", "-l", "7860"]
+# Use custom server that injects HF Space secrets at runtime
+CMD ["node", "server.cjs"]
