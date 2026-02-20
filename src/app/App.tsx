@@ -7,10 +7,8 @@ import { AudioPlayer } from './components/AudioPlayer';
 import { StyleSelector } from './components/StyleSelector';
 import { Button } from './components/ui/button';
 import { Separator } from './components/ui/separator';
-import { Input } from './components/ui/input';
-import { Label } from './components/ui/label';
 import { Alert, AlertDescription } from './components/ui/alert';
-import { Volume2, AlertCircle, CheckCircle2, Settings, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Volume2, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { getWordCount } from './utils/summarizer';
 import { TTSEngine, TTSSettings, isWebSpeechSupported } from './utils/ttsEngine';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -27,17 +25,9 @@ function App() {
 
   // RAG pipeline state
   const [contentStyle, setContentStyle] = useState<ContentStyle>('summary');
-  const [apiToken, setApiToken] = useState(() => {
-    return localStorage.getItem('hf_api_token') || (import.meta as any).env?.VITE_HF_TOKEN || '';
-  });
-  const [showSettings, setShowSettings] = useState(false);
+  const apiToken = (import.meta as any).env?.VITE_HF_TOKEN || '';
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
-
-  const handleApiTokenChange = (token: string) => {
-    setApiToken(token);
-    localStorage.setItem('hf_api_token', token);
-  };
 
   // TTS Engine and settings
   const ttsEngine = useMemo(() => new TTSEngine(), []);
@@ -89,8 +79,7 @@ function App() {
     }
 
     if (!apiToken.trim()) {
-      setError('Please provide a HuggingFace API token in the Settings panel above.');
-      setShowSettings(true);
+      setError('AI features are unavailable — API token not configured.');
       return;
     }
 
@@ -192,55 +181,6 @@ function App() {
             </Alert>
           )}
 
-          {/* API Settings */}
-          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md transition-colors duration-300 overflow-hidden">
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                <span className="font-medium dark:text-gray-200">API Settings</span>
-                {apiToken && (
-                  <span className="text-xs text-green-500 ml-2">● Connected</span>
-                )}
-              </div>
-              {showSettings ? (
-                <ChevronUp className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-              )}
-            </button>
-            {showSettings && (
-              <div className="px-6 pb-4 space-y-3 border-t dark:border-slate-800">
-                <div className="space-y-2 pt-3">
-                  <Label htmlFor="api-token" className="dark:text-gray-200">
-                    HuggingFace API Token
-                  </Label>
-                  <Input
-                    id="api-token"
-                    type="password"
-                    value={apiToken}
-                    onChange={(e) => handleApiTokenChange(e.target.value)}
-                    placeholder="hf_..."
-                    className="dark:bg-slate-800 dark:text-gray-100 dark:border-slate-700"
-                  />
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Get a free token at{' '}
-                    <a
-                      href="https://huggingface.co/settings/tokens"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-500 hover:underline"
-                    >
-                      huggingface.co/settings/tokens
-                    </a>
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Input Section */}
           <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6 space-y-6 transition-colors duration-300">
             <TextInput value={inputText} onChange={setInputText} disabled={hasSummary || isGenerating} />
@@ -265,7 +205,7 @@ function App() {
               onClick={handleGenerate}
               size="lg"
               className="w-full"
-              disabled={!inputText.trim() || hasSummary || isGenerating || !apiToken.trim()}
+              disabled={!inputText.trim() || hasSummary || isGenerating}
             >
               {isGenerating ? (
                 <>
