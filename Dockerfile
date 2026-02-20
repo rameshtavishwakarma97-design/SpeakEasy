@@ -15,7 +15,8 @@ COPY . .
 
 # Accept HF token as build argument (set as HF Space secret)
 ARG VITE_HF_TOKEN
-ENV VITE_HF_TOKEN=$VITE_HF_TOKEN
+# Write .env file so Vite can pick up the token at build time
+RUN echo "VITE_HF_TOKEN=${VITE_HF_TOKEN}" > .env
 
 # Build the project
 RUN npm run build
